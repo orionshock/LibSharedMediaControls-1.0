@@ -7,13 +7,17 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
     if not category then
         LibSharedMediaControlsDemoDB = LibSharedMediaControlsDemoDB or {statusbar = "Blizzard"}
         category = Settings.RegisterVerticalLayoutCategory("Shared Media Controls Demo")
+        Settings.RegisterInitializer(category, CreateSettingsListSectionHeaderInitializer("Status Bars"))
         setting = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_STATUSBAR", "statusbar",
             LibSharedMediaControlsDemoDB, "string", "Status-bar texture", "Blizzard")
         setting:SetValueChangedCallback(function(_, name)
             print("Shared Media Controls selected:", name)
         end)
+        local colorSetting = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_COLOR", "color",
+            LibSharedMediaControlsDemoDB, "string", "Preview color", "ff3399ff")
+        Settings.CreateColorSwatch(category, colorSetting, "Tint the texture previews with this color.")
         LibStub("LibSharedMediaControls-1.0"):CreateStatusbarDropdown(category, setting,
-            "Choose a texture. The stored value is its registered media name.")
+            "Choose a texture. The stored value is its registered media name.", colorSetting)
         Settings.RegisterAddOnCategory(category)
     end
 
