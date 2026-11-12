@@ -5,7 +5,7 @@
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 10
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 11
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -333,5 +333,119 @@ function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
         return name
     end
 
+    return initializer
+end
+
+--- CreateBorderDropdown(category, setting, tooltip[, colorSetting, edgeSizeSetting])
+-- Native string setting holds an LSM "border" name; optional companions are
+-- AARRGGBB color (default white) and numeric edge size (default 8).
+-- Menu edge size is limited to 1-32; selected control to 1-8, for its short height.
+-- Hover changes only the menu preview; selection writes the primary setting.
+-- Returns the registered initializer. Selected companions refresh live; menu
+-- opening starts with the current selection. "None" clears the preview border.
+function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edgeSizeSetting)
+    assert(setting:GetVariableType() == "string", "Border settings must store a media name")
+    if colorSetting then assert(colorSetting:GetVariableType() == "string", "Border color must be AARRGGBB") end
+    if edgeSizeSetting then
+        assert(edgeSizeSetting:GetVariableType() == "number", "Border edge size must be numeric")
+    end
+
+    local function UpdateBorder(preview, name, maxEdge)
+        local size = edgeSizeSetting and edgeSizeSetting:GetValue() or 8
+        size = math.max(1, math.min(maxEdge, size))
+        local path = media:Fetch("border", name)
+        -- A fresh backdrop table reapplies size even when the media is unchanged.
+        preview:SetBackdrop(path and {edgeFile = path, edgeSize = size} or nil)
+        local r, g, b, a = 1, 1, 1, 1
+        if colorSetting then
+            r, g, b, a = CreateColorFromHexString(colorSetting:GetValue()):GetRGBA()
+        end
+        preview:SetBackdropBorderColor(r, g, b, a)
+    end
+
+    local initializer = Settings.CreateDropdown(category, setting, function() return {} end, tooltip)
+    initializer.data.forceSteppersHidden = true
+    local activePreview
+    local function RefreshSelected()
+        if activePreview then UpdateBorder(activePreview, setting:GetValue(), 8) end
+    end
+
+    initializer.customOptionHandler = function(rootDescription)
+        rootDescription:SetScrollMode(400)
+        local menuPreview
+        rootDescription:AddMenuAcquiredCallback(function(menu)
+            -- AttachTemplate permits the backdrop mixin to create its own pieces;
+            -- AttachFrame's compositor restrictions would prohibit CreateTexture.
+            menuPreview = menu:AttachTemplate("BackdropTemplate")
+            menuPreview:ClearBackdrop()
+            menuPreview:ClearAllPoints()
+            menuPreview:SetPoint("TOPLEFT", menu, "TOPLEFT", 6, -8)
+            menuPreview:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -6, 9)
+            menuPreview:SetFrameLevel(menu:GetFrameLevel() + 1)
+            menuPreview:EnableMouse(false)
+            -- Template scripts are not restored automatically after pool reset.
+            menuPreview:SetScript("OnSizeChanged", menuPreview.OnBackdropSizeChanged)
+            UpdateBorder(menuPreview, setting:GetValue(), 32)
+            menuPreview:Show()
+        end)
+        rootDescription:AddMenuReleasedCallback(function()
+            if menuPreview then
+                menuPreview:ClearBackdrop()
+                menuPreview:SetScript("OnSizeChanged", nil)
+                menuPreview:Hide()
+                menuPreview = nil
+            end
+        end)
+        for _, name in ipairs(media:List("border")) do
+            local option = {value = name, label = name, text = name}
+            option.onEnter = function()
+                if menuPreview then UpdateBorder(menuPreview, name, 32) end
+            end
+            local entry = Settings.CreateDropdownButton(rootDescription, option,
+                function(data) return setting:GetValue() == data.value end,
+                function(data) setting:SetValue(data.value) end)
+            entry:AddInitializer(function(button)
+                local text = button.Text
+                local width = math.min(400, text:GetUnboundedStringWidth())
+                text:ClearAllPoints()
+                text:SetPoint("LEFT", button, "LEFT", 14, 0)
+                text:SetWidth(width)
+                text:SetShadowColor(0, 0, 0, 1)
+                text:SetShadowOffset(1, -1)
+                return math.max(220, width + 28), 24
+            end)
+        end
+    end
+
+    local initFrame, resetter = initializer.InitFrame, initializer.Resetter
+    initializer.InitFrame = function(owner, frame)
+        local dropdown = frame.Control.Dropdown
+        if not dropdown.LSMCBorderPreview then
+            local preview = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
+            preview:SetPoint("TOPLEFT", dropdown, "TOPLEFT", 3, -3)
+            preview:SetPoint("BOTTOMRIGHT", dropdown, "BOTTOMRIGHT", -3, 3)
+            preview:SetFrameLevel(dropdown:GetFrameLevel())
+            preview:EnableMouse(false)
+            dropdown.LSMCBorderPreview = preview
+        end
+        activePreview = dropdown.LSMCBorderPreview
+        RefreshSelected()
+        activePreview:Show()
+        initFrame(owner, frame)
+        for _, companion in pairs({colorSetting, edgeSizeSetting}) do
+            frame.cbrHandles:SetOnValueChangedCallback(companion:GetVariable(), RefreshSelected)
+        end
+    end
+    initializer.Resetter = function(owner, frame)
+        local preview = frame.Control.Dropdown.LSMCBorderPreview
+        preview:ClearBackdrop()
+        preview:Hide()
+        activePreview = nil
+        resetter(owner, frame)
+    end
+    initializer.getSelectionTextFunc = function()
+        RefreshSelected()
+        return setting:GetValue()
+    end
     return initializer
 end

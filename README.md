@@ -1,7 +1,7 @@
 ﻿# LibSharedMediaControls-1.0
 
 Native Blizzard Settings selectors for LibSharedMedia status-bar textures,
-fonts, and backgrounds in WoW Forever. Borders and sounds are not implemented.
+fonts, backgrounds, and borders in WoW Forever. Sounds are not implemented.
 
 ## Loading
 
@@ -179,6 +179,56 @@ The library configures reusable Font objects and applies them with
 `SetFontObject()`. Blizzard's menu compositor prohibits `SetFont()` on attached
 FontStrings. The library refetches font paths when updating previews.
 
+## Borders
+
+```lua
+local initializer = LSMC:CreateBorderDropdown(
+    category, borderSetting, tooltip, colorSetting, edgeSizeSetting
+)
+```
+
+`category` is a native vertical-layout category, `borderSetting` is a string
+Settings object holding an LSM `"border"` name, and `tooltip` is a string or `nil`.
+The constructor adds the control to the layout and returns its native initializer.
+
+| Optional companion | Settings type and value | Default |
+| --- | --- | --- |
+| `colorSetting` | `"string"`, eight-digit `AARRGGBB` | White |
+| `edgeSizeSetting` | `"number"`, backdrop edge size in pixels | 8 |
+
+The open menu has an isolated `BackdropTemplate` child that uses the fetched
+texture as its `edgeFile`. Blizzard's backdrop implementation renders corners
+and tiled edges. It does not replace Blizzard's menu border or background.
+The preview sits inside the menu boundary, below the option frames, with mouse
+input disabled. It is not part of the scrollable row layout.
+
+Opening applies the currently selected border. Hovering changes only the menu
+preview; its last hovered border remains until the next hover or close. Clicking
+calls `borderSetting:SetValue(name)`. `"None"` clears the preview border.
+LSM enumeration runs on menu generation, and artwork comes from `Fetch("border", name)`.
+Registered media is assumed usable; no alternate border renderer or asset
+validation is provided.
+
+The closed control also has a small isolated border preview inside its normal
+boundary. Companion notifications update this selected preview live. Menu edges
+are limited to 1-32 pixels; the short selected control limits them to 1-8 pixels.
+These limits affect previews only. Large menu edges may overlap more of the list
+area, though labels and native highlights draw above them. Reopen the menu to
+apply companion changes to its initial preview, or hover another entry to read
+their current values.
+
+The library creates one reusable selected-preview frame per native dropdown.
+Menu acquisition uses the compositor's `AttachTemplate("BackdropTemplate")` pool.
+It explicitly resets anchors, layering, size-change script, artwork, and tint on
+reuse. The release callback clears the backdrop, removes its size-change script,
+and hides the frame before Blizzard releases it. Selected previews clear and
+hide on Settings control release; native callback handles unregister normally.
+
+The addon owns settings, persistence, companion controls, and applying the border
+to its actual UI. Its own frame can use `SetBackdrop({edgeFile = path, edgeSize = size})`
+and `SetBackdropBorderColor(r, g, b, a)` through a native `BackdropTemplate`.
+The demo shows registration of the color swatch and edge-size slider.
+
 ## Addon example
 
 Run this after your saved variables and Settings API are ready. Declare
@@ -246,7 +296,7 @@ assets remain the provider's responsibility.
 ## Standalone demo and client checks
 
 Run `/lsmc` to create and open the opt-in native Settings category. It includes
-Status Bars, Fonts, and Backgrounds sections. Each groups its companion controls
+Status Bars, Fonts, Backgrounds, and Borders sections. Each groups its companion controls
 before its selector. Backgrounds has its own independent color swatch. Values
 persist in `LibSharedMediaControlsDemoDB`.
 Selection callbacks print the chosen names.
@@ -255,12 +305,16 @@ Check independent tint changes against the status-bar color, select `"None"`,
 reopen after `/lsmc register`, and switch between background, status-bar, and font
 menus to check reused artwork and colors. Also exercise a background selector
 without a companion to verify original texture colors after tinted frame reuse.
+Borders includes its own color swatch and edge-size slider. Check corners and
+edges at different sizes, hover without selecting, then close or open an unrelated
+dropdown to check cleanup. Reopening must start with the current selection.
+Check `"None"`, companion changes, scrolling, and the late border registration.
 
 | Command | Behavior |
 | --- | --- |
 | `/lsmc` | Open the demo |
 | `/lsmc set` | Set the texture setting to `"Blizzard"` through its native API |
-| `/lsmc register` | Register late status-bar, font, and background entries; reopen their menus to see them |
+| `/lsmc register` | Register late status-bar, font, background, and border entries; reopen their menus to see them |
 
 Exercise selection, companions, picker cancel, hover colors, menu reopening,
 scrolling, long names, Defaults, and persistence after reload. Switch to unrelated

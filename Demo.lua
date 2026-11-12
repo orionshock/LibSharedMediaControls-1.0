@@ -56,6 +56,22 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
         end)
         LibStub("LibSharedMediaControls-1.0"):CreateBackgroundDropdown(category, backgroundSetting,
             "Choose a background texture. The stored value is its registered media name.", backgroundColor)
+
+        Settings.RegisterInitializer(category, CreateSettingsListSectionHeaderInitializer("Borders"))
+        local borderColor = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BORDER_COLOR", "borderColor",
+            LibSharedMediaControlsDemoDB, "string", "Border color", "ffffffff")
+        Settings.CreateColorSwatch(category, borderColor, "Tint the border artwork.")
+        local borderSize = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BORDER_SIZE", "borderSize",
+            LibSharedMediaControlsDemoDB, "number", "Border edge size", 8)
+        Settings.CreateSlider(category, borderSize, Settings.CreateSliderOptions(1, 32, 1),
+            "Menu edge size; the selected control preview is capped at 8 to fit its height.")
+        local borderSetting = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BORDER", "border",
+            LibSharedMediaControlsDemoDB, "string", "Border", "Blizzard Dialog")
+        borderSetting:SetValueChangedCallback(function(_, name)
+            print("Shared Media Controls border:", name)
+        end)
+        LibStub("LibSharedMediaControls-1.0"):CreateBorderDropdown(category, borderSetting,
+            "Hover to preview a border around the menu. Click to select its registered name.", borderColor, borderSize)
         Settings.RegisterAddOnCategory(category)
     end
 
@@ -63,7 +79,8 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
         media:Register("statusbar", "LSMC Late Registration", [[Interface\Buttons\WHITE8X8]])
         media:Register("font", "LSMC Late Font Registration", media:Fetch("font", media:GetDefault("font")))
         media:Register("background", "LSMC Late Background Registration", [[Interface\Buttons\WHITE8X8]])
-        print("Registered late status-bar, font, and background entries; reopen their menus to discover them.")
+        media:Register("border", "LSMC Late Border Registration", media:Fetch("border", "Blizzard Dialog"))
+        print("Registered late media entries; reopen their menus to discover them.")
     elseif command == "set" then
         setting:SetValue("Blizzard")
     end
