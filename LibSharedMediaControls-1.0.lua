@@ -5,7 +5,7 @@
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 13
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 14
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -23,7 +23,7 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
         lib.fontSerial = (lib.fontSerial or 0) + 1
         return CreateFont("LibSharedMediaControlsPreviewFont" .. lib.fontSerial)
     end
-    assert(setting:GetVariableType() == "string", "Font settings must store a media name")
+    assert(setting and setting:GetVariableType() == "string", "Font settings must store a media name")
     if sizeSetting then assert(sizeSetting:GetVariableType() == "number", "Font size must be numeric") end
     if colorSetting then assert(colorSetting:GetVariableType() == "string", "Font color must be AARRGGBB") end
     if outlineSetting then assert(outlineSetting:GetVariableType() == "string", "Font outline must be a string") end
@@ -43,8 +43,14 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
         local outline = outlineSetting and outlineSetting:GetValue() or ""
         if outline ~= "OUTLINE" and outline ~= "THICKOUTLINE" then outline = "" end
         -- Compositor FontStrings prohibit SetFont; SetFontObject is supported.
-        fontObject:SetFont(media:Fetch("font", name), size, outline)
-        sample:SetFontObject(fontObject)
+        local path = media:Fetch("font", name)
+        if path then
+            fontObject:SetFont(path, size, outline)
+            sample:SetFontObject(fontObject)
+        else
+            -- No registered/default font: keep the saved name visible in native text.
+            sample:SetFontObject("GameFontHighlight")
+        end
         sample:SetText(PreviewName(name))
         sample:SetTextColor(1, 1, 1, 1)
     end
@@ -80,6 +86,7 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
 
     local initFrame, resetter = initializer.InitFrame, initializer.Resetter
     initializer.InitFrame = function(owner, frame)
+        assert(not activeSample, "Create a separate font initializer for each Settings row")
         local dropdown = frame.Control.Dropdown
         activeSample = dropdown.Text
         savedFont = activeSample:GetFontObject()
@@ -109,7 +116,7 @@ end
 -- stores AARRGGBB. Preview RGB is dimmed to 45%; alpha is unchanged. Default: gray.
 -- Returns the registered native initializer; only the primary setting is written.
 function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
-    assert(setting:GetVariableType() == "string", "Texture settings must store a media name")
+    assert(setting and setting:GetVariableType() == "string", "Status-bar settings must store a media name")
     if colorSetting then
         assert(colorSetting:GetVariableType() == "string", "Color settings must store an AARRGGBB string")
     end
@@ -153,7 +160,7 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
                 TintPreview(preview)
 
                 local text = button.Text
-                local textWidth = text:GetUnboundedStringWidth()
+                local textWidth = math.min(400, text:GetUnboundedStringWidth())
                 text:ClearAllPoints()
                 text:SetPoint("LEFT", button, "LEFT", 14, 0)
                 text:SetWidth(textWidth)
@@ -171,6 +178,7 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
     -- Use the initializer lifecycle so artwork is hidden before a pooled
     -- Settings row is handed to another setting, including a stock dropdown.
     initializer.InitFrame = function(owner, frame)
+        assert(not activePreview, "Create a separate status-bar initializer for each Settings row")
         local dropdown = frame.Control.Dropdown
         if not dropdown.LSMCStatusbarPreview then
             local preview = dropdown:CreateTexture(nil, "ARTWORK")
@@ -224,7 +232,7 @@ end
 -- Opening starts with the selected texture; the last hover remains until close.
 -- "None" clears the artwork. Menu artwork belongs to Blizzard's compositor.
 function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
-    assert(setting:GetVariableType() == "string", "Texture settings must store a media name")
+    assert(setting and setting:GetVariableType() == "string", "Background settings must store a media name")
     if colorSetting then
         assert(colorSetting:GetVariableType() == "string", "Color settings must store an AARRGGBB string")
     end
@@ -277,7 +285,7 @@ function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
 
             entry:AddInitializer(function(button)
                 local text = button.Text
-                local textWidth = text:GetUnboundedStringWidth()
+                local textWidth = math.min(400, text:GetUnboundedStringWidth())
                 text:ClearAllPoints()
                 text:SetPoint("LEFT", button, "LEFT", 14, 0)
                 text:SetWidth(textWidth)
@@ -295,6 +303,7 @@ function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
     -- Use the initializer lifecycle so artwork is hidden before a pooled
     -- Settings row is handed to another setting, including a stock dropdown.
     initializer.InitFrame = function(owner, frame)
+        assert(not activePreview, "Create a separate background initializer for each Settings row")
         local dropdown = frame.Control.Dropdown
         if not dropdown.LSMCBackgroundPreview then
             local preview = dropdown:CreateTexture(nil, "ARTWORK")
@@ -344,7 +353,7 @@ end
 -- Returns the registered initializer. Selected companions refresh live; menu
 -- opening starts with the current selection. "None" clears the preview border.
 function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edgeSizeSetting)
-    assert(setting:GetVariableType() == "string", "Border settings must store a media name")
+    assert(setting and setting:GetVariableType() == "string", "Border settings must store a media name")
     if colorSetting then assert(colorSetting:GetVariableType() == "string", "Border color must be AARRGGBB") end
     if edgeSizeSetting then
         assert(edgeSizeSetting:GetVariableType() == "number", "Border edge size must be numeric")
@@ -419,6 +428,7 @@ function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edge
 
     local initFrame, resetter = initializer.InitFrame, initializer.Resetter
     initializer.InitFrame = function(owner, frame)
+        assert(not activePreview, "Create a separate border initializer for each Settings row")
         local dropdown = frame.Control.Dropdown
         if not dropdown.LSMCBorderPreview then
             local preview = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
@@ -458,7 +468,7 @@ end
 -- One preview at a time, stopped on menu release or control hide. "None" is silent.
 -- Returns the initializer already added to the native category layout.
 function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
-    assert(setting:GetVariableType() == "string", "Sound settings must store a media name")
+    assert(setting and setting:GetVariableType() == "string", "Sound settings must store a media name")
     if channelSetting then
         assert(channelSetting:GetVariableType() == "string", "Sound channel must be a string")
     end
@@ -518,8 +528,11 @@ function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
             end)
         end
     end
+    local initialized
     local initFrame, resetter = initializer.InitFrame, initializer.Resetter
     initializer.InitFrame = function(owner, frame)
+        assert(not initialized, "Create a separate sound initializer for each Settings row")
+        initialized = true
         initFrame(owner, frame)
         local control = frame.Control
         if not control.LSMCSoundPreview then
@@ -544,7 +557,11 @@ function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
         play:SetScript("OnClick", nil)
         play:SetScript("OnHide", nil)
         play:Hide()
+        initialized = nil
         resetter(owner, frame)
+    end
+    initializer.getSelectionTextFunc = function()
+        return setting:GetValue()
     end
     return initializer
 end

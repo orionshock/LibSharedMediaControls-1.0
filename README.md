@@ -28,6 +28,15 @@ Each constructor adds one dropdown to the category and returns its native
 Settings initializer. Construct once per selector during Settings setup. Do not
 add the returned initializer to the layout again.
 
+Use a separate constructor call for each row, including rows in different
+categories. Separate selectors may refer to the same setting, but their
+initializers must not be shared between simultaneously displayed rows. The
+library asserts this before a second row can overwrite active preview state.
+Each constructor owns its callbacks, previews, Font objects, and sound handle.
+The persistent font-name counter only supplies unique global Font object names.
+Settings variable names are global to Blizzard Settings; addons must choose
+their own unique names, such as `MYADDON_BACKGROUND`, in registration calls.
+
 The addon owns its category, setting registration, persistence, companion
 controls, change callbacks, and applying values to its actual UI. Both
 `Settings.RegisterAddOnSetting()` and `Settings.RegisterProxySetting()` objects
@@ -74,6 +83,8 @@ Missing names remain stored. Menu entries use LSM's normal `Fetch()` fallback.
 The selected preview requests no default texture, leaving the name visible
 without artwork when its texture is unavailable. LSM global overrides still
 apply according to `Fetch()` semantics.
+Menu label width is capped at 400 pixels to keep long names from expanding the
+menu indefinitely. Native label truncation and selected-control width still apply.
 
 ## Background textures
 
@@ -174,6 +185,9 @@ cannot replace them. The stored name remains plain text. Menu label width is
 capped at 400 pixels; long names can truncate, especially in the selected control.
 Fonts and their glyph coverage are assumed usable; the library does not validate
 them or add fallback machinery.
+If LSM returns no font path at all, the saved name remains visible in Blizzard's
+native font. This handles an unavailable registration or empty registry without
+checking whether a registered file exists or renders correctly.
 
 The library configures reusable Font objects and applies them with
 `SetFontObject()`. Blizzard's menu compositor prohibits `SetFont()` on attached
@@ -253,11 +267,15 @@ It reads both settings at click time and never changes the selection. This butto
 is reused with its native Settings row, hidden and disconnected on release, and
 shares the same playback handle as the menu's speaker buttons.
 
-Only one preview from this menu plays at a time. A new speaker click stops the
-previous handle with `StopSound()`. Closing the menu, selecting an entry, or
-opening another dropdown stops the preview through the native release callback.
+Only one preview from this selector plays at a time. A new speaker click stops
+the previous handle with `StopSound()`. Closing its open menu, selecting an entry,
+or switching away from that menu stops playback through the native release callback.
 The compositor releases menu speaker buttons and icon textures with their rows.
 Hiding the Settings control also stops its current preview.
+Playback started beside the closed dropdown has no menu lifetime until that
+selector's menu is opened. An unrelated dropdown opening while the control
+remains visible does not stop this playback. Different sound selectors own
+independent handles and do not stop each other's closed-control previews.
 There are no playback events, completion polling, or persistent audio handlers.
 
 LSM's `"None"` entry uses file ID 1. The library skips that value, so its speaker
@@ -272,6 +290,8 @@ The sound list is enumerated on menu generation and its path is fetched on each
 speaker click. Reopen to discover new names. Channel changes need no subscription
 or menu rebuild because the click reads `channelSetting:GetValue()` directly.
 The returned initializer is already registered with the category layout.
+Saved names that are no longer registered remain visible instead of showing
+Blizzard's generic `Custom` label; preview lookup still follows LSM semantics.
 
 ```lua
 local sound = Settings.RegisterAddOnSetting(category, "MYADDON_SOUND", "sound",
