@@ -5,7 +5,7 @@
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 11
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 13
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -446,6 +446,105 @@ function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edge
     initializer.getSelectionTextFunc = function()
         RefreshSelected()
         return setting:GetValue()
+    end
+    return initializer
+end
+
+--- CreateSoundDropdown(category, setting, tooltip[, channelSetting])
+-- Primary string setting stores an LSM "sound" name. Optional string companion
+-- supplies Master/SFX/Music/Ambience/Dialog at click time; default SFX.
+-- Speaker clicks preview only; radio clicks select without previewing.
+-- A speaker beside the closed dropdown previews its current selection.
+-- One preview at a time, stopped on menu release or control hide. "None" is silent.
+-- Returns the initializer already added to the native category layout.
+function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
+    assert(setting:GetVariableType() == "string", "Sound settings must store a media name")
+    if channelSetting then
+        assert(channelSetting:GetVariableType() == "string", "Sound channel must be a string")
+    end
+
+    local soundHandle
+    local function StopPreview()
+        if soundHandle then
+            StopSound(soundHandle)
+            soundHandle = nil
+        end
+    end
+    local function PlayPreview(name)
+        StopPreview()
+        local file = media:Fetch("sound", name)
+        -- LSM's "None" uses file ID 1.
+        if not file or file == 1 then return end
+        local channel = channelSetting and channelSetting:GetValue() or "SFX"
+        local played, handle = PlaySoundFile(file, channel)
+        if played then soundHandle = handle end
+    end
+
+    local initializer = Settings.CreateDropdown(category, setting, function() return {} end, tooltip)
+    initializer.data.forceSteppersHidden = true
+    initializer.customOptionHandler = function(rootDescription)
+        rootDescription:SetScrollMode(400)
+        rootDescription:AddMenuReleasedCallback(StopPreview)
+
+        for _, name in ipairs(media:List("sound")) do
+            local entry = Settings.CreateDropdownButton(rootDescription,
+                {value = name, label = name, text = name},
+                function(data) return setting:GetValue() == data.value end,
+                function(data) setting:SetValue(data.value) end)
+            entry:AddInitializer(function(button)
+                local text = button.Text
+                local width = math.min(400, text:GetUnboundedStringWidth())
+                text:ClearAllPoints()
+                text:SetPoint("LEFT", button, "LEFT", 14, 0)
+                text:SetWidth(width)
+
+                local play = MenuTemplates.AttachBasicButton(button, 20, 20)
+                play:SetPoint("RIGHT", button, "RIGHT", -6, 0)
+                play:SetPropagateMouseClicks(false)
+                play:RegisterForClicks("LeftButtonUp")
+                local icon = play:AttachTexture()
+                icon:SetAllPoints(play)
+                icon:SetTexture([[Interface\Common\VoiceChat-Speaker]])
+                play:SetNormalTexture(icon)
+                local highlight = play:AttachTexture()
+                highlight:SetAllPoints(play)
+                highlight:SetTexture([[Interface\Common\VoiceChat-On]])
+                play:SetHighlightTexture(highlight)
+                MenuTemplates.SetUtilityButtonClickHandler(play, function()
+                    PlayPreview(name)
+                end)
+                MenuTemplates.SetUtilityButtonTooltipText(play, "Preview sound")
+                return math.max(220, width + 52), 24
+            end)
+        end
+    end
+    local initFrame, resetter = initializer.InitFrame, initializer.Resetter
+    initializer.InitFrame = function(owner, frame)
+        initFrame(owner, frame)
+        local control = frame.Control
+        if not control.LSMCSoundPreview then
+            local play = CreateFrame("Button", nil, control)
+            play:SetSize(20, 20)
+            play:SetPoint("LEFT", control.Dropdown, "RIGHT", 6, 0)
+            play:SetNormalTexture([[Interface\Common\VoiceChat-Speaker]])
+            play:SetHighlightTexture([[Interface\Common\VoiceChat-On]])
+            play:RegisterForClicks("LeftButtonUp")
+            play:SetPropagateMouseClicks(false)
+            MenuTemplates.SetUtilityButtonTooltipText(play, "Preview selected sound")
+            control.LSMCSoundPreview = play
+        end
+        local play = control.LSMCSoundPreview
+        play:SetScript("OnClick", function() PlayPreview(setting:GetValue()) end)
+        play:SetScript("OnHide", StopPreview)
+        play:Show()
+    end
+    initializer.Resetter = function(owner, frame)
+        local play = frame.Control.LSMCSoundPreview
+        StopPreview()
+        play:SetScript("OnClick", nil)
+        play:SetScript("OnHide", nil)
+        play:Hide()
+        resetter(owner, frame)
     end
     return initializer
 end

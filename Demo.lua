@@ -72,6 +72,27 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
         end)
         LibStub("LibSharedMediaControls-1.0"):CreateBorderDropdown(category, borderSetting,
             "Hover to preview a border around the menu. Click to select its registered name.", borderColor, borderSize)
+
+        Settings.RegisterInitializer(category, CreateSettingsListSectionHeaderInitializer("Sounds"))
+        -- Built-in file IDs also used by installed Forever addons; no bundled audio.
+        media:Register("sound", "LSMC Demo Alert", 567478)
+        media:Register("sound", "LSMC Demo Ding", 567458)
+        local channel = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_SOUND_CHANNEL", "soundChannel",
+            LibSharedMediaControlsDemoDB, "string", "Playback channel", "SFX")
+        Settings.CreateDropdown(category, channel, function()
+            local options = Settings.CreateControlTextContainer()
+            for _, name in ipairs({"Master", "SFX", "Music", "Ambience", "Dialog"}) do
+                options:Add(name, name)
+            end
+            return options:GetData()
+        end, "Use this channel for speaker-button previews. Game audio settings still apply.")
+        local soundSetting = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_SOUND", "sound",
+            LibSharedMediaControlsDemoDB, "string", "Sound", "None")
+        soundSetting:SetValueChangedCallback(function(_, name)
+            print("Shared Media Controls sound:", name)
+        end)
+        LibStub("LibSharedMediaControls-1.0"):CreateSoundDropdown(category, soundSetting,
+            "Click a name to select; click its speaker to preview without selecting.", channel)
         Settings.RegisterAddOnCategory(category)
     end
 
@@ -80,6 +101,7 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
         media:Register("font", "LSMC Late Font Registration", media:Fetch("font", media:GetDefault("font")))
         media:Register("background", "LSMC Late Background Registration", [[Interface\Buttons\WHITE8X8]])
         media:Register("border", "LSMC Late Border Registration", media:Fetch("border", "Blizzard Dialog"))
+        media:Register("sound", "LSMC Late Sound Registration", 567478)
         print("Registered late media entries; reopen their menus to discover them.")
     elseif command == "set" then
         setting:SetValue("Blizzard")

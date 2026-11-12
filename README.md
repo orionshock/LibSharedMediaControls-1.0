@@ -1,7 +1,7 @@
 ﻿# LibSharedMediaControls-1.0
 
 Native Blizzard Settings selectors for LibSharedMedia status-bar textures,
-fonts, backgrounds, and borders in WoW Forever. Sounds are not implemented.
+fonts, backgrounds, borders, and sounds in WoW Forever.
 
 ## Loading
 
@@ -229,6 +229,59 @@ to its actual UI. Its own frame can use `SetBackdrop({edgeFile = path, edgeSize 
 and `SetBackdropBorderColor(r, g, b, a)` through a native `BackdropTemplate`.
 The demo shows registration of the color swatch and edge-size slider.
 
+## Sounds
+
+```lua
+local initializer = LSMC:CreateSoundDropdown(category, soundSetting, tooltip, channelSetting)
+```
+
+`category` is a native vertical-layout category, `soundSetting` is a string
+Settings object holding an LSM `"sound"` name, and `tooltip` is a string or `nil`.
+The optional `channelSetting` is a native string Settings object. Use `"Master"`,
+`"SFX"`, `"Music"`, `"Ambience"`, or `"Dialog"`; the default is `"SFX"`.
+The addon owns settings, persistence, and any companion channel control.
+
+Each native radio entry has a separate speaker button created with Blizzard's
+`MenuTemplates.AttachBasicButton()`. Clicking the name selects through
+`soundSetting:SetValue(name)`. The speaker consumes its own click, reads the
+current channel, and calls `PlaySoundFile(LSM:Fetch("sound", name), channel)`.
+It does not select the entry or close the menu. Hovering, opening, and selecting
+do not automatically preview sounds. Native menu UI feedback can still play.
+
+A speaker button beside the closed dropdown previews the current selected sound.
+It reads both settings at click time and never changes the selection. This button
+is reused with its native Settings row, hidden and disconnected on release, and
+shares the same playback handle as the menu's speaker buttons.
+
+Only one preview from this menu plays at a time. A new speaker click stops the
+previous handle with `StopSound()`. Closing the menu, selecting an entry, or
+opening another dropdown stops the preview through the native release callback.
+The compositor releases menu speaker buttons and icon textures with their rows.
+Hiding the Settings control also stops its current preview.
+There are no playback events, completion polling, or persistent audio handlers.
+
+LSM's `"None"` entry uses file ID 1. The library skips that value, so its speaker
+is silent and also stops a previous preview. Missing or empty fetched values are
+silent. Registered filenames and file IDs otherwise go directly to the playback
+API; LSM accepts `.ogg` and `.mp3` file paths. The library does not validate audio
+assets or change global sound CVars. Existing channel volume and enable settings
+can make previews inaudible. No preview-volume control is provided: the extracted
+native volume-override interface targets sound kits rather than LSM file playback.
+
+The sound list is enumerated on menu generation and its path is fetched on each
+speaker click. Reopen to discover new names. Channel changes need no subscription
+or menu rebuild because the click reads `channelSetting:GetValue()` directly.
+The returned initializer is already registered with the category layout.
+
+```lua
+local sound = Settings.RegisterAddOnSetting(category, "MYADDON_SOUND", "sound",
+    MyAddonDB, "string", "Sound", "None")
+LSMC:CreateSoundDropdown(category, sound, "Click the speaker to preview.")
+-- Handle sound:SetValueChangedCallback() in your addon if selection needs action.
+-- Play the chosen sound from your own event handler, not the selection callback,
+-- when selection itself should remain silent.
+```
+
 ## Addon example
 
 Run this after your saved variables and Settings API are ready. Declare
@@ -296,7 +349,7 @@ assets remain the provider's responsibility.
 ## Standalone demo and client checks
 
 Run `/lsmc` to create and open the opt-in native Settings category. It includes
-Status Bars, Fonts, Backgrounds, and Borders sections. Each groups its companion controls
+Status Bars, Fonts, Backgrounds, Borders, and Sounds sections. Each groups its companion controls
 before its selector. Backgrounds has its own independent color swatch. Values
 persist in `LibSharedMediaControlsDemoDB`.
 Selection callbacks print the chosen names.
@@ -309,12 +362,18 @@ Borders includes its own color swatch and edge-size slider. Check corners and
 edges at different sizes, hover without selecting, then close or open an unrelated
 dropdown to check cleanup. Reopening must start with the current selection.
 Check `"None"`, companion changes, scrolling, and the late border registration.
+Sounds includes a channel selector and registers two built-in demo sound IDs so
+multiple previews can be compared without another media addon. Check speaker
+clicks leave the selected name unchanged, name clicks select without previewing,
+and a new preview stops the previous one. Test all five channels, `"None"`, menu
+closing, switching dropdowns, scrolling, and late registrations. Actual playback
+and child-button interaction still require verification in Forever.
 
 | Command | Behavior |
 | --- | --- |
 | `/lsmc` | Open the demo |
 | `/lsmc set` | Set the texture setting to `"Blizzard"` through its native API |
-| `/lsmc register` | Register late status-bar, font, background, and border entries; reopen their menus to see them |
+| `/lsmc register` | Register late entries for all five media types; reopen their menus to see them |
 
 Exercise selection, companions, picker cancel, hover colors, menu reopening,
 scrolling, long names, Defaults, and persistence after reload. Switch to unrelated
