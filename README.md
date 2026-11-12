@@ -3,7 +3,18 @@
 Native Blizzard Settings selectors for LibSharedMedia status-bar textures,
 fonts, backgrounds, borders, and sounds in WoW Forever.
 
+MIT licensed. Copyright (c) 2026 Orionshock. See [License](#license) for
+the separate notices covering bundled dependencies.
+
 ## Loading
+
+### Standalone addon
+
+Download the packaged addon ZIP from GitHub Releases, rather than GitHub's
+automatic source archives. Extract `LibSharedMediaControls-1.0` into Forever's
+`Interface/AddOns` directory. The standalone package intentionally includes
+`Demo.lua`; run `/lsmc` in-game to open it. Loading the addon registers the slash
+command, but the demo category and its settings are created only when invoked.
 
 The standalone addon bundles LibStub, CallbackHandler-1.0, and LibSharedMedia-3.0.
 Its TOC loads them before the library and opt-in demo. A separate LibSharedMedia
@@ -11,10 +22,17 @@ installation is unnecessary. LibStub version checks allow the dependencies to
 coexist with copies embedded in other addons. There are no AceGUI, AceConfig,
 or AceDB dependencies.
 
+### Single-file embedding
+
 To embed, load LibStub, CallbackHandler-1.0, and LibSharedMedia-3.0 before
 `LibSharedMediaControls-1.0.lua`. Use your existing dependencies or the bundled
 copies. Do not load this project's TOC or `Demo.lua` when embedding. Ensure
 `Blizzard_Settings_Shared` is loaded before calling the constructors.
+Copy only `LibSharedMediaControls-1.0.lua` into your addon and list it before your
+Settings setup file in your TOC. The Lua file includes its MIT notice. LibStub and
+LibSharedMedia-3.0 must already be available; CallbackHandler-1.0 is LSM's transitive
+dependency. Your addon loads those dependencies and owns its saved variables.
+Neither the one-file library nor its constructors register the `/lsmc` demo.
 
 ```lua
 local LSMC = LibStub("LibSharedMediaControls-1.0")
@@ -400,3 +418,60 @@ scrolling, long names, Defaults, and persistence after reload. Switch to unrelat
 Settings dropdowns to check pooled-frame cleanup. Watch for Lua errors and taint
 or blocked-action warnings during normal interactions, including in combat.
 Syntax and lint checks do not establish runtime behavior in Forever.
+
+## Packaging and releases
+
+The official [BigWigsMods packager](https://github.com/BigWigsMods/packager) reads
+`.pkgmeta` and packages the existing tracked dependencies. No externals, nolib
+archive, extra client variants, or separate embedding build are configured.
+The target is WoW Forever, Interface `16001`.
+
+The standalone ZIP contains this directory, plus the packager's generated changelog:
+
+```text
+LibSharedMediaControls-1.0/
+    LibSharedMediaControls-1.0.toc
+    LibSharedMediaControls-1.0.lua
+    Demo.lua
+    LICENSE
+    README.md
+    libs/
+        LibStub/                 (Lua source and existing license)
+        CallbackHandler-1.0/     (Lua source and existing license)
+        LibSharedMedia-3.0/       (Lua source and LGPL license)
+```
+
+Development instructions, workflows, editor files, and local build artifacts
+are excluded. The demo and all files referenced by the TOC remain included.
+
+The release workflow runs only when a `v*` tag is pushed and rejects lightweight
+tags. It checks out full history and invokes `BigWigsMods/packager@v2` using
+GitHub's provided token with `contents: write`. Ordinary branch pushes do not
+publish releases. No CurseForge, Wago, or WoWInterface upload is configured.
+
+After reviewing and pushing the repository to GitHub, a maintainer can create
+and push an annotated release tag, for example:
+
+```sh
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+Ensure repository Actions policy permits the referenced actions and a token
+with write access to release contents. No personal access token is required.
+The packager substitutes the annotated tag version into the TOC's
+`@project-version@`. This release version is independent of LibStub's major
+`LibSharedMediaControls-1.0` and implementation minor number; change the latter
+only when updating the library implementation.
+
+## License
+
+Original library and demo code and project documentation are distributed under
+the [MIT License](LICENSE), copyright (c) 2026 Orionshock. Retain the copyright
+and permission notice when embedding the library; it is included in the Lua header.
+
+Bundled dependencies retain their original authorship and license notices in
+`libs/`. LibSharedMedia-3.0 is LGPL 2.1; CallbackHandler-1.0 carries the Ace3 BSD
+notice; LibStub's source declares it public domain and its existing accompanying
+notice is retained. The MIT grant does not relicense those dependencies or
+Blizzard's APIs and code. See each dependency's source header and license file.

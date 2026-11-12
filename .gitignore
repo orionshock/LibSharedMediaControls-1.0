@@ -1,0 +1,7 @@
+.release/
+.vscode/
+.idea/
+*.code-workspace
+*.tmp
+*.bak
+*.zip

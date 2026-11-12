@@ -1,0 +1,13 @@
+package-as: LibSharedMediaControls-1.0
+
+ignore:
+  - .github
+  - .gitignore
+  - .vscode
+  - .idea
+  - .release
+  - AGENT.MD
+  - "*.code-workspace"
+  - "*.tmp"
+  - "*.bak"
+  - "*.zip"

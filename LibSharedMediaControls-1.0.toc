@@ -1,7 +1,9 @@
 ## Interface: 16001
-## Title: Lib: SharedMediaControls-1.0
-## Notes: Native Settings selectors for LibSharedMedia.
-## Version: 1.0.0
+## Title: LibSharedMediaControls-1.0
+## Notes: Native WoW Forever Settings media selectors with an opt-in /lsmc demo; runtime libraries included.
+## Author: Orionshock
+## Version: @project-version@
+## X-License: MIT
 ## Dependencies: Blizzard_Settings_Shared
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Library
