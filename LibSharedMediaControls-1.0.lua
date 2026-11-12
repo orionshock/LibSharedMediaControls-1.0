@@ -29,7 +29,7 @@ SOFTWARE.
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 14
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 15
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -371,7 +371,7 @@ end
 
 --- CreateBorderDropdown(category, setting, tooltip[, colorSetting, edgeSizeSetting])
 -- Native string setting holds an LSM "border" name; optional companions are
--- AARRGGBB color (default white) and numeric edge size (default 8).
+-- AARRGGBB color (default white) and numeric edge size (default 12).
 -- Menu edge size is limited to 1-32; selected control to 1-8, for its short height.
 -- Hover changes only the menu preview; selection writes the primary setting.
 -- Returns the registered initializer. Selected companions refresh live; menu
@@ -384,7 +384,7 @@ function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edge
     end
 
     local function UpdateBorder(preview, name, maxEdge)
-        local size = edgeSizeSetting and edgeSizeSetting:GetValue() or 8
+        local size = edgeSizeSetting and edgeSizeSetting:GetValue() or 12
         size = math.max(1, math.min(maxEdge, size))
         local path = media:Fetch("border", name)
         -- A fresh backdrop table reapplies size even when the media is unchanged.

@@ -241,7 +241,7 @@ The constructor adds the control to the layout and returns its native initialize
 | Optional companion | Settings type and value | Default |
 | --- | --- | --- |
 | `colorSetting` | `"string"`, eight-digit `AARRGGBB` | White |
-| `edgeSizeSetting` | `"number"`, backdrop edge size in pixels | 8 |
+| `edgeSizeSetting` | `"number"`, backdrop edge size in pixels | 12 |
 
 The open menu has an isolated `BackdropTemplate` child that uses the fetched
 texture as its `edgeFile`. Blizzard's backdrop implementation renders corners

@@ -62,7 +62,7 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
             LibSharedMediaControlsDemoDB, "string", "Border color", "ffffffff")
         Settings.CreateColorSwatch(category, borderColor, "Tint the border artwork.")
         local borderSize = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BORDER_SIZE", "borderSize",
-            LibSharedMediaControlsDemoDB, "number", "Border edge size", 8)
+            LibSharedMediaControlsDemoDB, "number", "Border edge size", 12)
         Settings.CreateSlider(category, borderSize, Settings.CreateSliderOptions(1, 32, 1),
             "Menu edge size; the selected control preview is capped at 8 to fit its height.")
         local borderSetting = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BORDER", "border",
