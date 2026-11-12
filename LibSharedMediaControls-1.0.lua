@@ -5,22 +5,11 @@
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 8
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 10
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 local media = LibStub("LibSharedMedia-3.0")
-
-local function NewPreviewFont()
-    lib.fontSerial = (lib.fontSerial or 0) + 1
-    return CreateFont("LibSharedMediaControlsPreviewFont" .. lib.fontSerial)
-end
-
--- Settings calls its options provider for tooltips as well as menu generation.
--- Our entries are supplied by customOptionHandler instead of the stock inserter.
-local function EmptyOptions()
-    return {}
-end
 
 --- Font names themselves preview the chosen font.
 -- CreateFontDropdown(category, setting, tooltip[, sizeSetting, colorSetting, outlineSetting])
@@ -30,6 +19,10 @@ end
 -- Preview-only size limits: menu 8-32, selected 8-18. Fonts are assumed usable.
 -- Returns the native initializer. Selecting a font writes only the primary setting.
 function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSetting, outlineSetting)
+    local function NewPreviewFont()
+        lib.fontSerial = (lib.fontSerial or 0) + 1
+        return CreateFont("LibSharedMediaControlsPreviewFont" .. lib.fontSerial)
+    end
     assert(setting:GetVariableType() == "string", "Font settings must store a media name")
     if sizeSetting then assert(sizeSetting:GetVariableType() == "number", "Font size must be numeric") end
     if colorSetting then assert(colorSetting:GetVariableType() == "string", "Font color must be AARRGGBB") end
@@ -56,7 +49,7 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
         sample:SetTextColor(1, 1, 1, 1)
     end
 
-    local initializer = Settings.CreateDropdown(category, setting, EmptyOptions, tooltip)
+    local initializer = Settings.CreateDropdown(category, setting, function() return {} end, tooltip)
     initializer.data.forceSteppersHidden = true
     local activeSample, savedFont, savedColor
     local function RefreshSample()
@@ -112,12 +105,11 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
 end
 
 --- CreateStatusbarDropdown(category, setting, tooltip[, colorSetting])
--- setting: string Settings object holding an LSM "statusbar" name; tooltip: string or nil.
--- colorSetting: optional native AARRGGBB string setting. Preview RGB brightness
--- is multiplied by 0.45 for readability; alpha is unchanged. Default: gray artwork.
--- Returns the native initializer; selection calls setting:SetValue(name).
+-- Native string setting stores an LSM "statusbar" name. Optional color companion
+-- stores AARRGGBB. Preview RGB is dimmed to 45%; alpha is unchanged. Default: gray.
+-- Returns the registered native initializer; only the primary setting is written.
 function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
-    assert(setting:GetVariableType() == "string", "Status-bar settings must store a media name")
+    assert(setting:GetVariableType() == "string", "Texture settings must store a media name")
     if colorSetting then
         assert(colorSetting:GetVariableType() == "string", "Color settings must store an AARRGGBB string")
     end
@@ -127,11 +119,10 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
         if colorSetting then
             r, g, b, a = CreateColorFromHexString(colorSetting:GetValue()):GetRGBA()
         end
-        -- Keep the existing dimming behind labels, including for untinted rows.
         preview:SetVertexColor(r * 0.45, g * 0.45, b * 0.45, a)
     end
 
-    local initializer = Settings.CreateDropdown(category, setting, EmptyOptions, tooltip)
+    local initializer = Settings.CreateDropdown(category, setting, function() return {} end, tooltip)
     initializer.data.forceSteppersHidden = true
 
     local function IsSelected(name)
@@ -212,6 +203,130 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
         local name = setting:GetValue()
         if activePreview then
             activePreview:SetTexture(media:Fetch("statusbar", name, true))
+            TintPreview(activePreview)
+        end
+        -- Preserve missing names rather than silently changing the setting.
+        return name
+    end
+
+    return initializer
+end
+
+--- CreateBackgroundDropdown(category, setting, tooltip[, colorSetting])
+-- category: native vertical-layout category; setting: string Settings object
+-- holding an LSM "background" name; tooltip: string or nil. Optional colorSetting
+-- is a native AARRGGBB string setting. Omit it for original texture colors;
+-- otherwise RGBA tints the ordinary texture without dimming, tiling, or a backdrop.
+-- Returns the initializer already added to the layout. Selection writes only the
+-- primary setting. The addon owns persistence, color controls, and applying values.
+-- Selected tint updates live; reopen menus for new media and current entry tints.
+-- Hover previews fill the menu behind all labels without selecting the entry.
+-- Opening starts with the selected texture; the last hover remains until close.
+-- "None" clears the artwork. Menu artwork belongs to Blizzard's compositor.
+function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
+    assert(setting:GetVariableType() == "string", "Texture settings must store a media name")
+    if colorSetting then
+        assert(colorSetting:GetVariableType() == "string", "Color settings must store an AARRGGBB string")
+    end
+
+    local function TintPreview(preview)
+        local r, g, b, a = 1, 1, 1, 1
+        if colorSetting then
+            r, g, b, a = CreateColorFromHexString(colorSetting:GetValue()):GetRGBA()
+        end
+        preview:SetVertexColor(r, g, b, a)
+    end
+
+    local initializer = Settings.CreateDropdown(category, setting, function() return {} end, tooltip)
+    initializer.data.forceSteppersHidden = true
+
+    local function IsSelected(name)
+        return setting:GetValue() == name
+    end
+
+    local function SetSelected(name)
+        setting:SetValue(name)
+    end
+
+    initializer.customOptionHandler = function(rootDescription)
+        rootDescription:SetScrollMode(400)
+        local menuPreview
+        rootDescription:AddMenuAcquiredCallback(function(menu)
+            menuPreview = menu:AttachTexture()
+            menuPreview:SetDrawLayer("ARTWORK", 7)
+            menuPreview:SetPoint("TOPLEFT", menu, "TOPLEFT", 3, -6)
+            menuPreview:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -3, 7)
+            menuPreview:SetTexture(media:Fetch("background", setting:GetValue(), true))
+            TintPreview(menuPreview)
+        end)
+        rootDescription:AddMenuReleasedCallback(function()
+            menuPreview = nil
+        end)
+        -- List is LSM's maintained, sorted list; never retain or mutate it.
+        for _, name in ipairs(media:List("background")) do
+            local option = {value = name, label = name, text = name}
+            option.onEnter = function()
+                if menuPreview then
+                    menuPreview:SetTexture(media:Fetch("background", name))
+                    TintPreview(menuPreview)
+                end
+            end
+            local entry = Settings.CreateDropdownButton(rootDescription, option,
+                function(data) return IsSelected(data.value) end,
+                function(data) SetSelected(data.value) end)
+
+            entry:AddInitializer(function(button)
+                local text = button.Text
+                local textWidth = text:GetUnboundedStringWidth()
+                text:ClearAllPoints()
+                text:SetPoint("LEFT", button, "LEFT", 14, 0)
+                text:SetWidth(textWidth)
+                text:SetShadowColor(0, 0, 0, 1)
+                text:SetShadowOffset(1, -1)
+                return math.max(220, textWidth + 28), 24
+            end)
+        end
+    end
+
+    local activePreview
+    local initFrame = initializer.InitFrame
+    local resetter = initializer.Resetter
+
+    -- Use the initializer lifecycle so artwork is hidden before a pooled
+    -- Settings row is handed to another setting, including a stock dropdown.
+    initializer.InitFrame = function(owner, frame)
+        local dropdown = frame.Control.Dropdown
+        if not dropdown.LSMCBackgroundPreview then
+            local preview = dropdown:CreateTexture(nil, "ARTWORK")
+            preview:SetPoint("TOPLEFT", dropdown, "TOPLEFT", 4, -4)
+            preview:SetPoint("BOTTOMRIGHT", dropdown, "BOTTOMRIGHT", -4, 4)
+            dropdown.LSMCBackgroundPreview = preview
+        end
+        activePreview = dropdown.LSMCBackgroundPreview
+        activePreview:SetTexture(media:Fetch("background", setting:GetValue(), true))
+        TintPreview(activePreview)
+        activePreview:Show()
+        initFrame(owner, frame)
+        if colorSetting then
+            -- The native control unregisters these handles on Release().
+            frame.cbrHandles:SetOnValueChangedCallback(colorSetting:GetVariable(), function()
+                if activePreview then
+                    TintPreview(activePreview)
+                end
+            end)
+        end
+    end
+
+    initializer.Resetter = function(owner, frame)
+        frame.Control.Dropdown.LSMCBackgroundPreview:Hide()
+        activePreview = nil
+        resetter(owner, frame)
+    end
+
+    initializer.getSelectionTextFunc = function()
+        local name = setting:GetValue()
+        if activePreview then
+            activePreview:SetTexture(media:Fetch("background", name, true))
             TintPreview(activePreview)
         end
         -- Preserve missing names rather than silently changing the setting.

@@ -44,13 +44,26 @@ SlashCmdList.LIBSHAREDMEDIACONTROLS = function(command)
         LibStub("LibSharedMediaControls-1.0"):CreateFontDropdown(category, fontSetting,
             "Each font name previews its registered font. The stored value is the media name.",
             fontSize, fontColor, fontOutline)
+
+        Settings.RegisterInitializer(category, CreateSettingsListSectionHeaderInitializer("Backgrounds"))
+        local backgroundColor = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BACKGROUND_COLOR", "backgroundColor",
+            LibSharedMediaControlsDemoDB, "string", "Preview color", "ffffffff")
+        Settings.CreateColorSwatch(category, backgroundColor, "Tint background previews independently of status bars.")
+        local backgroundSetting = Settings.RegisterAddOnSetting(category, "LSMC_DEMO_BACKGROUND", "background",
+            LibSharedMediaControlsDemoDB, "string", "Background texture", "Blizzard Dialog Background")
+        backgroundSetting:SetValueChangedCallback(function(_, name)
+            print("Shared Media Controls background:", name)
+        end)
+        LibStub("LibSharedMediaControls-1.0"):CreateBackgroundDropdown(category, backgroundSetting,
+            "Choose a background texture. The stored value is its registered media name.", backgroundColor)
         Settings.RegisterAddOnCategory(category)
     end
 
     if command == "register" then
         media:Register("statusbar", "LSMC Late Registration", [[Interface\Buttons\WHITE8X8]])
         media:Register("font", "LSMC Late Font Registration", media:Fetch("font", media:GetDefault("font")))
-        print("Registered late texture and font entries; reopen their dropdowns to discover them.")
+        media:Register("background", "LSMC Late Background Registration", [[Interface\Buttons\WHITE8X8]])
+        print("Registered late status-bar, font, and background entries; reopen their menus to discover them.")
     elseif command == "set" then
         setting:SetValue("Blizzard")
     end

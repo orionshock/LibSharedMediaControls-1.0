@@ -1,7 +1,7 @@
 ﻿# LibSharedMediaControls-1.0
 
-Native Blizzard Settings selectors for LibSharedMedia status-bar textures and
-fonts in WoW Forever. Backgrounds, borders, and sounds are not implemented.
+Native Blizzard Settings selectors for LibSharedMedia status-bar textures,
+fonts, and backgrounds in WoW Forever. Borders and sounds are not implemented.
 
 ## Loading
 
@@ -74,6 +74,78 @@ Missing names remain stored. Menu entries use LSM's normal `Fetch()` fallback.
 The selected preview requests no default texture, leaving the name visible
 without artwork when its texture is unavailable. LSM global overrides still
 apply according to `Fetch()` semantics.
+
+## Background textures
+
+```lua
+local initializer = LSMC:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
+```
+
+| Argument | Value |
+| --- | --- |
+| `category` | Native vertical-layout Settings category |
+| `setting` | String Settings object containing an LSM `"background"` name |
+| `tooltip` | Tooltip string or `nil` |
+| `colorSetting` | Optional string Settings object containing eight hexadecimal digits: `AARRGGBB` |
+
+The constructor adds the dropdown to the category and returns its native Settings
+initializer. The addon owns both settings, persistence, the companion's control,
+and applying the selected background to its UI. Selecting an entry writes only
+the registered name to the primary setting through `SetValue()`.
+
+Without a color companion, previews use vertex color `(1, 1, 1, 1)` and retain
+the texture's original colors and transparency. With a companion, previews apply
+its RGBA directly, without the status-bar selector's 45% dimming.
+
+The open menu displays one background behind all its options. It starts with the
+selected texture; hovering an option previews that texture across the menu.
+The last hovered preview remains until another entry is hovered or the menu closes.
+Hovering does not write the setting. Clicking selects normally, and the closed
+control continues to display the selected texture behind its label.
+Native highlighting and label shadows remain in place; there is no extra
+backdrop or border. Texture lookup, missing-name behavior, live selected tint,
+menu reopening, and pooled-region cleanup follow the status-bar behavior.
+Each media type has its own implementation and lifecycle code; constructors
+share only the library registration and top-level LibSharedMedia reference.
+Backgrounds stretch to fit the preview rectangle; they do not tile or reproduce
+the consuming addon's final background dimensions. Bright textures can reduce
+label contrast. The library does not darken them automatically.
+
+The library reads `List("background")` when generating the menu and calls
+`Fetch("background", name)` for hovered artwork. The selected control requests no
+default when fetching its texture. Missing names remain stored; menu lookup uses
+LSM's normal fallback, and global overrides follow LSM semantics. The registered
+`"None"` option clears the artwork while retaining its selectable name.
+
+Native companion callbacks update the selected tint immediately while the
+control is active. Hover another option to refresh the menu tint, or reopen it
+to start again with the selected texture and discover newly registered media.
+Menu acquisition attaches a single compositor-managed texture, released when
+the menu closes. The library assigns each reused texture's path and vertex
+color explicitly, hides selected artwork on release, and lets Blizzard remove
+the control's callback handles.
+
+```lua
+local background = Settings.RegisterAddOnSetting(category, "MYADDON_BACKGROUND",
+    "background", MyAddonDB, "string", "Background texture", "Blizzard Dialog Background")
+local backgroundColor = Settings.RegisterAddOnSetting(category, "MYADDON_BACKGROUND_COLOR",
+    "backgroundColor", MyAddonDB, "string", "Background color", "ffffffff")
+Settings.CreateColorSwatch(category, backgroundColor, "Tint the background preview.")
+LSMC:CreateBackgroundDropdown(category, background, "Choose a background.", backgroundColor)
+
+local function ApplyBackground()
+    MyBackgroundTexture:SetTexture(LSM:Fetch("background", background:GetValue()))
+    MyBackgroundTexture:SetVertexColor(
+        CreateColorFromHexString(backgroundColor:GetValue()):GetRGBA())
+end
+background:SetValueChangedCallback(ApplyBackground)
+backgroundColor:SetValueChangedCallback(ApplyBackground)
+ApplyBackground()
+```
+
+This example assumes an initialized `MyAddonDB`, an existing category, and a
+Texture region named `MyBackgroundTexture` owned by your addon. Declare the saved
+variable in your TOC. Omit the fourth constructor argument for an untinted selector.
 
 ## Fonts
 
@@ -174,15 +246,21 @@ assets remain the provider's responsibility.
 ## Standalone demo and client checks
 
 Run `/lsmc` to create and open the opt-in native Settings category. It includes
-the status-bar selector and color control, then a Fonts section with size, color,
-outline, and font controls. Values persist in `LibSharedMediaControlsDemoDB`.
+Status Bars, Fonts, and Backgrounds sections. Each groups its companion controls
+before its selector. Backgrounds has its own independent color swatch. Values
+persist in `LibSharedMediaControlsDemoDB`.
 Selection callbacks print the chosen names.
+The Backgrounds section defaults to `"Blizzard Dialog Background"` and white tint.
+Check independent tint changes against the status-bar color, select `"None"`,
+reopen after `/lsmc register`, and switch between background, status-bar, and font
+menus to check reused artwork and colors. Also exercise a background selector
+without a companion to verify original texture colors after tinted frame reuse.
 
 | Command | Behavior |
 | --- | --- |
 | `/lsmc` | Open the demo |
 | `/lsmc set` | Set the texture setting to `"Blizzard"` through its native API |
-| `/lsmc register` | Register a late texture and font; reopen their menus to see them |
+| `/lsmc register` | Register late status-bar, font, and background entries; reopen their menus to see them |
 
 Exercise selection, companions, picker cancel, hover colors, menu reopening,
 scrolling, long names, Defaults, and persistence after reload. Switch to unrelated
