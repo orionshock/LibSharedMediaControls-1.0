@@ -79,6 +79,21 @@ The return value is an initializer, not a persistent dropdown frame. The library
 owns its `InitFrame`, `Resetter`, `customOptionHandler`, and
 `getSelectionTextFunc`. Replacing these handlers breaks preview setup or cleanup.
 
+## Settings search
+
+All five constructors retain Blizzard's native Settings search support. Forever
+automatically indexes the setting's display name. Add keywords through the
+returned initializer when the consuming addon needs additional search terms:
+
+```lua
+local initializer = LSMC:CreateFontDropdown(category, fontSetting, tooltip)
+initializer:AddSearchTags("font", "typeface", "text appearance")
+```
+
+Search finds the Settings control; it does not search or filter the media options
+inside its dropdown. Registered media names and tooltip text are not automatically
+indexed. The consuming addon owns any additional search tags.
+
 ## Status-bar textures
 
 ```lua
