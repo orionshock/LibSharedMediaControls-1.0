@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: Lib: SharedMediaControls-1.0
+## Notes: Native Settings selectors for LibSharedMedia.
+## Version: 1.0.0
+## Dependencies: Blizzard_Settings_Shared
+## OptionalDeps: LibSharedMedia-3.0
+## X-Category: Library
+## SavedVariables: LibSharedMediaControlsDemoDB
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+LibSharedMediaControls-1.0.lua
+Demo.lua
