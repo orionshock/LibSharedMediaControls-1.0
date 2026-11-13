@@ -6,6 +6,16 @@ fonts, backgrounds, borders, and sounds in WoW Forever.
 MIT licensed. Copyright (c) 2026 Orionshock. See [License](#license) for
 the separate notices covering bundled dependencies.
 
+## Screenshots
+
+| Status Bars | Fonts |
+| --- | --- |
+| ![Tinted status-bar texture previews](images/StatusBar.jpg) | ![Font names rendered with color and outline](images/Font3.jpg) |
+| **Backgrounds** | **Borders** |
+| ![Tinted menu-wide background hover preview](images/Background2.jpg) | ![Tinted border artwork around the menu](images/Borders2.jpg) |
+| **Sounds** | |
+| ![Independent sound preview buttons](images/Sound1.jpg) | |
+
 ## Loading
 
 The standalone library package includes a Demo.
