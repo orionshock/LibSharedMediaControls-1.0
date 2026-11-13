@@ -29,7 +29,7 @@ SOFTWARE.
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 15
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 17
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -484,6 +484,50 @@ function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edge
     return initializer
 end
 
+-- Sound preview localization; unlisted locales use English.
+-- UTF-8 decimal byte escapes keep translated strings ASCII-safe in Lua 5.1.
+-- Setting labels/tooltips belong to consuming addons; media names belong to LSM.
+local previewSound, previewSelectedSound
+local locale = GetLocale()
+if locale == "enUS" or locale == "enGB" then
+    previewSound = "Preview sound"
+    previewSelectedSound = "Preview selected sound"
+elseif locale == "esMX" or locale == "esES" then
+    previewSound = "Escuchar sonido"
+    previewSelectedSound = "Escuchar sonido seleccionado"
+elseif locale == "ptBR" then
+    previewSound = "Ouvir som"
+    previewSelectedSound = "Ouvir som selecionado"
+elseif locale == "frFR" then
+    previewSound = "\195\137couter le son"
+    previewSelectedSound = "\195\137couter le son s\195\169lectionn\195\169"
+elseif locale == "deDE" then
+    previewSound = "Sound abspielen"
+    previewSelectedSound = "Ausgew\195\164hlten Sound abspielen"
+elseif locale == "itIT" then
+    previewSound = "Riproduci suono"
+    previewSelectedSound = "Riproduci il suono selezionato"
+elseif locale == "ruRU" then
+    previewSound = "\208\159\209\128\208\190\209\129\208\187\209\131\209\136\208\176\209\130\209" ..
+        "\140 \208\183\208\178\209\131\208\186"
+    previewSelectedSound = "\208\159\209\128\208\190\209\129\208\187\209\131\209\136\208\176\209\130\209" ..
+        "\140 \208\178\209\139\208\177\209\128\208\176\208\189\208\189\209\139\208" ..
+        "\185 \208\183\208\178\209\131\208\186"
+elseif locale == "koKR" then
+    previewSound = "\236\134\140\235\166\172 \235\175\184\235\166\172 \235\147\163\234\184\176"
+    previewSelectedSound = "\236\132\160\237\131\157\237\149\156 \236\134\140\235\166\172 \235\175\184" ..
+        "\235\166\172 \235\147\163\234\184\176"
+elseif locale == "zhCN" then
+    previewSound = "\232\175\149\229\144\172\229\163\176\233\159\179"
+    previewSelectedSound = "\232\175\149\229\144\172\233\128\137\228\184\173\231\154\132\229\163\176\233\159\179"
+elseif locale == "zhTW" then
+    previewSound = "\232\169\166\232\129\189\233\159\179\230\149\136"
+    previewSelectedSound = "\232\169\166\232\129\189\233\129\184\229\143\150\231\154\132\233\159\179\230\149\136"
+else
+    previewSound = "Preview sound"
+    previewSelectedSound = "Preview selected sound"
+end
+
 --- CreateSoundDropdown(category, setting, tooltip[, channelSetting])
 -- Primary string setting stores an LSM "sound" name. Optional string companion
 -- supplies Master/SFX/Music/Ambience/Dialog at click time; default SFX.
@@ -547,7 +591,7 @@ function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
                 MenuTemplates.SetUtilityButtonClickHandler(play, function()
                     PlayPreview(name)
                 end)
-                MenuTemplates.SetUtilityButtonTooltipText(play, "Preview sound")
+                MenuTemplates.SetUtilityButtonTooltipText(play, previewSound)
                 return math.max(220, width + 52), 24
             end)
         end
@@ -567,7 +611,7 @@ function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
             play:SetHighlightTexture([[Interface\Common\VoiceChat-On]])
             play:RegisterForClicks("LeftButtonUp")
             play:SetPropagateMouseClicks(false)
-            MenuTemplates.SetUtilityButtonTooltipText(play, "Preview selected sound")
+            MenuTemplates.SetUtilityButtonTooltipText(play, previewSelectedSound)
             control.LSMCSoundPreview = play
         end
         local play = control.LSMCSoundPreview
