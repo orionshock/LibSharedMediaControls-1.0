@@ -29,20 +29,20 @@ SOFTWARE.
 -- Primary settings store LSM names. Use SetValue() for notifications. Companions
 -- update selected previews live; reopen menus to refresh all rows. The library owns
 -- the initializer lifecycle and option/selection handlers; do not replace them.
-local MAJOR, MINOR = "LibSharedMediaControls-1.0", 17
+local MAJOR, MINOR = "LibSharedMediaControls-1.0", 19
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 local media = LibStub("LibSharedMedia-3.0")
 
 --- Font names themselves preview the chosen font.
--- CreateFontDropdown(category, setting, tooltip[, sizeSetting, colorSetting, outlineSetting])
+-- CreateFontDropdown(category, setting, tooltip[, sizeSetting, colorSetting, outlineSetting[, onEnter, onClose]])
 -- setting: string Settings object holding an LSM "font" name; tooltip: string or nil.
 -- Optional Settings companions: number size (default 14), AARRGGBB string color
 -- (default white), string outline ("", "OUTLINE", "THICKOUTLINE"; default "").
 -- Preview-only size limits: menu 8-32, selected 8-18. Fonts are assumed usable.
 -- Returns the native initializer. Selecting a font writes only the primary setting.
-function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSetting, outlineSetting)
+function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSetting, outlineSetting, onEnter, onClose)
     local function NewPreviewFont()
         lib.fontSerial = (lib.fontSerial or 0) + 1
         return CreateFont("LibSharedMediaControlsPreviewFont" .. lib.fontSerial)
@@ -87,6 +87,11 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
     end
 
     initializer.customOptionHandler = function(rootDescription)
+        if onClose then
+            rootDescription:AddMenuReleasedCallback(function()
+                onClose()
+            end)
+        end
         rootDescription:SetScrollMode(400)
         RefreshSample()
         for _, name in ipairs(media:List("font")) do
@@ -96,6 +101,12 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
                 {value = name, label = name, text = name},
                 function(data) return setting:GetValue() == data.value end,
                 function(data) setting:SetValue(data.value) end)
+            if onEnter then
+                entry:HookOnEnter(function()
+                    onEnter(name)
+                end)
+            end
+
             entry:AddInitializer(function(button)
                 local text = button.Text
                 UpdateSample(text, name, 32, menuFonts[name])
@@ -135,11 +146,11 @@ function lib:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSe
     return initializer
 end
 
---- CreateStatusbarDropdown(category, setting, tooltip[, colorSetting])
+--- CreateStatusbarDropdown(category, setting, tooltip[, colorSetting[, onEnter, onClose]])
 -- Native string setting stores an LSM "statusbar" name. Optional color companion
 -- stores AARRGGBB. Preview RGB is dimmed to 45%; alpha is unchanged. Default: gray.
 -- Returns the registered native initializer; only the primary setting is written.
-function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
+function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting, onEnter, onClose)
     assert(setting and setting:GetVariableType() == "string", "Status-bar settings must store a media name")
     if colorSetting then
         assert(colorSetting:GetVariableType() == "string", "Color settings must store an AARRGGBB string")
@@ -165,6 +176,11 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
     end
 
     initializer.customOptionHandler = function(rootDescription)
+        if onClose then
+            rootDescription:AddMenuReleasedCallback(function()
+                onClose()
+            end)
+        end
         rootDescription:SetScrollMode(400)
         -- List is LSM's maintained, sorted list; never retain or mutate it.
         for _, name in ipairs(media:List("statusbar")) do
@@ -172,6 +188,12 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
             local entry = Settings.CreateDropdownButton(rootDescription, option,
                 function(data) return IsSelected(data.value) end,
                 function(data) SetSelected(data.value) end)
+
+            if onEnter then
+                entry:HookOnEnter(function()
+                    onEnter(name)
+                end)
+            end
 
             entry:AddInitializer(function(button)
                 -- Compositor attachments are reset and released by Blizzard.
@@ -244,7 +266,7 @@ function lib:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
     return initializer
 end
 
---- CreateBackgroundDropdown(category, setting, tooltip[, colorSetting])
+--- CreateBackgroundDropdown(category, setting, tooltip[, colorSetting[, onEnter, onClose]])
 -- category: native vertical-layout category; setting: string Settings object
 -- holding an LSM "background" name; tooltip: string or nil. Optional colorSetting
 -- is a native AARRGGBB string setting. Omit it for original texture colors;
@@ -255,7 +277,7 @@ end
 -- Hover previews fill the menu behind all labels without selecting the entry.
 -- Opening starts with the selected texture; the last hover remains until close.
 -- "None" clears the artwork. Menu artwork belongs to Blizzard's compositor.
-function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
+function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting, onEnter, onClose)
     assert(setting and setting:GetVariableType() == "string", "Background settings must store a media name")
     if colorSetting then
         assert(colorSetting:GetVariableType() == "string", "Color settings must store an AARRGGBB string")
@@ -281,6 +303,11 @@ function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
     end
 
     initializer.customOptionHandler = function(rootDescription)
+        if onClose then
+            rootDescription:AddMenuReleasedCallback(function()
+                onClose()
+            end)
+        end
         rootDescription:SetScrollMode(400)
         local menuPreview
         rootDescription:AddMenuAcquiredCallback(function(menu)
@@ -306,6 +333,12 @@ function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
             local entry = Settings.CreateDropdownButton(rootDescription, option,
                 function(data) return IsSelected(data.value) end,
                 function(data) SetSelected(data.value) end)
+
+            if onEnter then
+                entry:HookOnEnter(function()
+                    onEnter(name)
+                end)
+            end
 
             entry:AddInitializer(function(button)
                 local text = button.Text
@@ -369,14 +402,14 @@ function lib:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
     return initializer
 end
 
---- CreateBorderDropdown(category, setting, tooltip[, colorSetting, edgeSizeSetting])
+--- CreateBorderDropdown(category, setting, tooltip[, colorSetting, edgeSizeSetting[, onEnter, onClose]])
 -- Native string setting holds an LSM "border" name; optional companions are
 -- AARRGGBB color (default white) and numeric edge size (default 12).
 -- Menu edge size is limited to 1-32; selected control to 1-8, for its short height.
 -- Hover changes only the menu preview; selection writes the primary setting.
 -- Returns the registered initializer. Selected companions refresh live; menu
 -- opening starts with the current selection. "None" clears the preview border.
-function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edgeSizeSetting)
+function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edgeSizeSetting, onEnter, onClose)
     assert(setting and setting:GetVariableType() == "string", "Border settings must store a media name")
     if colorSetting then assert(colorSetting:GetVariableType() == "string", "Border color must be AARRGGBB") end
     if edgeSizeSetting then
@@ -404,6 +437,11 @@ function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edge
     end
 
     initializer.customOptionHandler = function(rootDescription)
+        if onClose then
+            rootDescription:AddMenuReleasedCallback(function()
+                onClose()
+            end)
+        end
         rootDescription:SetScrollMode(400)
         local menuPreview
         rootDescription:AddMenuAcquiredCallback(function(menu)
@@ -437,6 +475,12 @@ function lib:CreateBorderDropdown(category, setting, tooltip, colorSetting, edge
             local entry = Settings.CreateDropdownButton(rootDescription, option,
                 function(data) return setting:GetValue() == data.value end,
                 function(data) setting:SetValue(data.value) end)
+            if onEnter then
+                entry:HookOnEnter(function()
+                    onEnter(name)
+                end)
+            end
+
             entry:AddInitializer(function(button)
                 local text = button.Text
                 local width = math.min(400, text:GetUnboundedStringWidth())
@@ -528,14 +572,14 @@ else
     previewSelectedSound = "Preview selected sound"
 end
 
---- CreateSoundDropdown(category, setting, tooltip[, channelSetting])
+--- CreateSoundDropdown(category, setting, tooltip[, channelSetting[, onEnter, onClose]])
 -- Primary string setting stores an LSM "sound" name. Optional string companion
 -- supplies Master/SFX/Music/Ambience/Dialog at click time; default SFX.
 -- Speaker clicks preview only; radio clicks select without previewing.
 -- A speaker beside the closed dropdown previews its current selection.
 -- One preview at a time, stopped on menu release or control hide. "None" is silent.
 -- Returns the initializer already added to the native category layout.
-function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
+function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting, onEnter, onClose)
     assert(setting and setting:GetVariableType() == "string", "Sound settings must store a media name")
     if channelSetting then
         assert(channelSetting:GetVariableType() == "string", "Sound channel must be a string")
@@ -561,6 +605,11 @@ function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
     local initializer = Settings.CreateDropdown(category, setting, function() return {} end, tooltip)
     initializer.data.forceSteppersHidden = true
     initializer.customOptionHandler = function(rootDescription)
+        if onClose then
+            rootDescription:AddMenuReleasedCallback(function()
+                onClose()
+            end)
+        end
         rootDescription:SetScrollMode(400)
         rootDescription:AddMenuReleasedCallback(StopPreview)
 
@@ -569,6 +618,12 @@ function lib:CreateSoundDropdown(category, setting, tooltip, channelSetting)
                 {value = name, label = name, text = name},
                 function(data) return setting:GetValue() == data.value end,
                 function(data) setting:SetValue(data.value) end)
+            if onEnter then
+                entry:HookOnEnter(function()
+                    onEnter(name)
+                end)
+            end
+
             entry:AddInitializer(function(button)
                 local text = button.Text
                 local width = math.min(400, text:GetUnboundedStringWidth())

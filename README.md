@@ -50,7 +50,7 @@ Leave the library-owned `InitFrame`, `Resetter`, `customOptionHandler`, and
 ## Status-bar textures
 
 ```lua
-LSMC:CreateStatusbarDropdown(category, setting, tooltip, colorSetting)
+LSMC:CreateStatusbarDropdown(category, setting, tooltip, colorSetting, onEnter, onClose)
 ```
 
 Uses LSM's `"statusbar"` registry. Each option and the selected control display
@@ -72,7 +72,7 @@ without artwork; menu entries use LSM's normal fallback.
 ## Background textures
 
 ```lua
-LSMC:CreateBackgroundDropdown(category, setting, tooltip, colorSetting)
+LSMC:CreateBackgroundDropdown(category, setting, tooltip, colorSetting, onEnter, onClose)
 ```
 
 Uses LSM's `"background"` registry. One texture fills the open menu behind all
@@ -96,7 +96,7 @@ The preview does not replace Blizzard's menu frame or border.
 ## Fonts
 
 ```lua
-LSMC:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSetting, outlineSetting)
+LSMC:CreateFontDropdown(category, setting, tooltip, sizeSetting, colorSetting, outlineSetting, onEnter, onClose)
 ```
 
 Uses LSM's `"font"` registry. Media names render in their registered fonts in both
@@ -125,7 +125,7 @@ saved name remains visible in Blizzard's native font.
 ## Borders
 
 ```lua
-LSMC:CreateBorderDropdown(category, setting, tooltip, colorSetting, edgeSizeSetting)
+LSMC:CreateBorderDropdown(category, setting, tooltip, colorSetting, edgeSizeSetting, onEnter, onClose)
 ```
 
 Uses LSM's `"border"` registry. An isolated `BackdropTemplate` renders the fetched
@@ -156,7 +156,7 @@ when its Settings row is released.
 ## Sounds
 
 ```lua
-LSMC:CreateSoundDropdown(category, setting, tooltip, channelSetting)
+LSMC:CreateSoundDropdown(category, setting, tooltip, channelSetting, onEnter, onClose)
 ```
 
 Uses LSM's `"sound"` registry. Clicking a name selects it; clicking its speaker
@@ -185,6 +185,13 @@ Playback started beside a closed dropdown is not tied to an unrelated menu's
 lifetime. Opening another dropdown while that control remains visible does not
 stop it. Separate sound selectors have independent handles and do not stop one
 another's closed-control previews.
+
+## Optional hover previews
+
+Each media dropdown constructor accepts two optional trailing callbacks.
+`onEnter(value)` receives the hovered media name without saving it.
+`onClose()` can restore the preview from the current setting when the menu closes.
+Existing in-menu previews continue to run.
 
 ## Expanded examples
 
